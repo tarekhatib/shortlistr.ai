@@ -2,5 +2,8 @@
   "python.defaultInterpreterPath": "/opt/anaconda3/envs/ai_project/bin/python",
   "python.analysis.extraPaths": [
     "/opt/anaconda3/envs/ai_project/lib/python3.11/site-packages"
-  ]
+  ],
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingModuleSource": "none"
+  }
 }

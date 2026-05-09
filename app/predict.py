@@ -5,19 +5,24 @@ import sys
 from typing import Any
 
 import joblib
+import logging
 import numpy as np
 import pandas as pd
+from tensorflow import keras
+from tensorflow.keras import layers, callbacks
+
+logging.getLogger("absl").setLevel(logging.ERROR)
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
 
 sys.path.insert(0, os.path.dirname(__file__))
 from gemini_extractor import extract_features_from_cv
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "ai_resume_screening.csv")
+DATA_PATH      = os.path.join(os.path.dirname(__file__), "..", "data", "ai_resume_screening.csv")
 MODEL_CACHE_PATH = os.path.join(os.path.dirname(__file__), "models.joblib")
+MLP_MODEL_PATH   = os.path.join(os.path.dirname(__file__), "mlp_model.keras")
 
 FEATURE_NAMES = [
     "years_experience",
@@ -47,7 +52,7 @@ def load_dataset() -> pd.DataFrame:
 def compute_class_weight_dict(y_train: pd.Series) -> dict[int, float]:
     classes = np.array([0, 1])
     weights = compute_class_weight(class_weight="balanced", classes=classes, y=y_train)
-    return dict(zip(classes, weights))
+    return {int(k): float(v) for k, v in zip(classes, weights)}
 
 
 def prepare_training_data(df: pd.DataFrame) -> tuple[np.ndarray, pd.Series, dict[int, float], StandardScaler, pd.Series]:
@@ -69,6 +74,15 @@ def prepare_training_data(df: pd.DataFrame) -> tuple[np.ndarray, pd.Series, dict
     return X_train_s, y_train, class_weight_dict, scaler, benchmarks
 
 
+def _build_mlp(n_features: int) -> keras.Sequential:
+    return keras.Sequential([
+        layers.Input(shape=(n_features,)),
+        layers.Dense(16, activation="relu"),
+        layers.Dense(8, activation="relu"),
+        layers.Dense(1, activation="sigmoid"),
+    ], name="medium_mlp")
+
+
 def train_models(X_train_s: np.ndarray, y_train: pd.Series, class_weight_dict: dict[int, float]) -> tuple[Any, Any]:
     rf = RandomForestClassifier(
         n_estimators=200,
@@ -80,25 +94,46 @@ def train_models(X_train_s: np.ndarray, y_train: pd.Series, class_weight_dict: d
     )
     rf.fit(X_train_s, y_train)
 
-    mlp = MLPClassifier(
-        hidden_layer_sizes=(16, 8),
-        activation="relu",
-        solver="adam",
-        learning_rate_init=0.001,
-        max_iter=200,
-        random_state=42,
+    mlp = _build_mlp(X_train_s.shape[1])
+    mlp.compile(
+        optimizer=keras.optimizers.legacy.Adam(learning_rate=0.001),
+        loss="binary_crossentropy",
+        metrics=["accuracy"],
     )
-    mlp.fit(X_train_s, y_train, sample_weight=y_train.map(class_weight_dict).values)
+    mlp.fit(
+        X_train_s, y_train.values,
+        epochs=100,
+        batch_size=256,
+        class_weight=class_weight_dict,
+        validation_split=0.1,
+        callbacks=[
+            callbacks.EarlyStopping(
+                monitor="val_loss",
+                patience=10,
+                restore_best_weights=True,
+                verbose=0,
+            ),
+            callbacks.ReduceLROnPlateau(
+                monitor="val_loss",
+                factor=0.5,
+                patience=5,
+                min_lr=1e-6,
+                verbose=0,
+            ),
+        ],
+        verbose=0,
+    )
 
     return rf, mlp
 
 
-def save_model_cache(rf: Any, mlp: Any, scaler: StandardScaler, benchmarks: pd.Series) -> None:
+def save_model_cache(rf: Any, mlp: keras.Sequential, scaler: StandardScaler, benchmarks: pd.Series) -> None:
+    mlp.save(MLP_MODEL_PATH)
     joblib.dump(
         {
-            "rf": rf,
-            "mlp": mlp,
-            "scaler": scaler,
+            "rf":       rf,
+            "mlp_path": MLP_MODEL_PATH,
+            "scaler":   scaler,
             "benchmarks": benchmarks,
         },
         MODEL_CACHE_PATH,
@@ -106,10 +141,16 @@ def save_model_cache(rf: Any, mlp: Any, scaler: StandardScaler, benchmarks: pd.S
 
 
 def load_model_cache() -> tuple[Any, Any, StandardScaler, pd.Series] | None:
-    if os.path.exists(MODEL_CACHE_PATH):
-        data = joblib.load(MODEL_CACHE_PATH)
-        return data["rf"], data["mlp"], data["scaler"], data["benchmarks"]
-    return None
+    if not os.path.exists(MODEL_CACHE_PATH):
+        return None
+    data = joblib.load(MODEL_CACHE_PATH)
+    if "mlp_path" not in data:
+        return None
+    mlp_path = data["mlp_path"]
+    if not os.path.exists(mlp_path):
+        return None
+    mlp = keras.models.load_model(mlp_path)
+    return data["rf"], mlp, data["scaler"], data["benchmarks"]
 
 
 def load_or_train_models(force_retrain: bool = False) -> tuple[Any, Any, StandardScaler, pd.Series]:
@@ -122,8 +163,6 @@ def load_or_train_models(force_retrain: bool = False) -> tuple[Any, Any, Standar
     rf, mlp = train_models(X_train_s, y_train, class_weight_dict)
     save_model_cache(rf, mlp, scaler, benchmarks)
     return rf, mlp, scaler, benchmarks
-
-
 
 
 def encode_candidate(features_raw: dict) -> dict:
@@ -194,8 +233,10 @@ def predict(pdf_path: str, jd_path: str) -> None:
 
     rf_pred = int(rf.predict(row_scaled)[0])
     rf_prob = float(rf.predict_proba(row_scaled)[0][rf_pred])
-    nn_pred = int(mlp.predict(row_scaled)[0])
-    nn_prob = float(mlp.predict_proba(row_scaled)[0][nn_pred])
+
+    nn_prob_raw = float(mlp.predict(row_scaled, verbose=0)[0][0])
+    nn_pred = 1 if nn_prob_raw >= 0.5 else 0
+    nn_prob = nn_prob_raw if nn_pred == 1 else (1 - nn_prob_raw)
 
     print("=" * 55)
     print("  Extracted Features")

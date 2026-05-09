@@ -76,8 +76,9 @@ async def analyze(cv: UploadFile = File(...), jd: str = Form(...)):
     rf_pred = int(models["rf"].predict(row_scaled)[0])
     rf_prob = round(float(models["rf"].predict_proba(row_scaled)[0][rf_pred]) * 100, 1)
 
-    mlp_pred = int(models["mlp"].predict(row_scaled)[0])
-    mlp_prob = round(float(models["mlp"].predict_proba(row_scaled)[0][mlp_pred]) * 100, 1)
+    mlp_prob_raw = float(models["mlp"].predict(row_scaled, verbose=0)[0][0])
+    mlp_pred = 1 if mlp_prob_raw >= 0.5 else 0
+    mlp_prob = round((mlp_prob_raw if mlp_pred == 1 else (1 - mlp_prob_raw)) * 100, 1)
 
     feedback = generate_feedback(features_enc, models["rf"], models["benchmarks"], job_requirements) if rf_pred == 0 else []
 
