@@ -1,0 +1,9 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f5f4f1;
+  color: #111;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}

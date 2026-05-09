@@ -8,4 +8,12 @@ dependencies:
   - scikit-learn
   - matplotlib
   - pandas
+  - tensorflow
+  - pip
+  - pip:
+    - google-genai
+    - python-dotenv
+    - fastapi
+    - uvicorn[standard]
+    - python-multipart
 prefix: /opt/anaconda3/envs/ai_project

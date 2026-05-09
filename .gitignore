@@ -4,10 +4,12 @@ __pycache__/
 
 # Environments
 .venv/
+.env
 .env/
 
 # Jupyter
 .ipynb_checkpoints/
 
 # Mac
-.DS_Store.claude/
+.DS_Store
+.claude/
