@@ -13,3 +13,6 @@ __pycache__/
 # Mac
 .DS_Store
 .claude/
+
+# Node
+node_modules/
