@@ -165,13 +165,6 @@ function Results({ data }) {
         ))}
       </div>
 
-      {!yes && feedback?.length === 0 && (
-        <div className="no-improve-note">
-          <p className="no-improve-title">No specific gaps found for this role</p>
-          <p className="no-improve-body">This candidate meets the job's stated requirements. The model's decision is likely driven by patterns in its training data rather than a specific deficiency — most notably, limited formal work experience compared to candidates in the dataset.</p>
-        </div>
-      )}
-
       {feedback?.length > 0 && (
         <>
           <p className="block-title" style={{ marginBottom: 12 }}>What to improve</p>
