@@ -96,7 +96,7 @@ def train_models(X_train_s: np.ndarray, y_train: pd.Series, class_weight_dict: d
 
     mlp = _build_mlp(X_train_s.shape[1])
     mlp.compile(
-        optimizer=keras.optimizers.legacy.Adam(learning_rate=0.001),
+        optimizer=keras.optimizers.Adam(learning_rate=0.001),
         loss="binary_crossentropy",
         metrics=["accuracy"],
     )
