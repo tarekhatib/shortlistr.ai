@@ -16,4 +16,3 @@ dependencies:
     - fastapi
     - uvicorn[standard]
     - python-multipart
-prefix: /opt/anaconda3/envs/ai_project
