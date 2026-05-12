@@ -116,40 +116,43 @@ Return a JSON object with these keys: years_experience, skills_match_score, educ
         ("gemini-1.5-flash", 2, 10),
     ]
 
-    for model, max_retries, wait_sec in models_to_try:
-        for attempt in range(1, max_retries + 1):
-            try:
-                print(f"Extracting features with {model} (attempt {attempt}/{max_retries})...")
-                response = client.models.generate_content(
-                    model=model,
-                    contents=[sample_file, prompt],
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=response_schema,
-                        temperature=0.1,
-                    ),
-                )
-                payload = json.loads(response.text)
-                if not isinstance(payload, dict):
-                    raise RuntimeError("Unexpected Gemini response format.")
-                return payload
-            except json.JSONDecodeError as e:
-                raise RuntimeError("Gemini returned invalid JSON.") from e
-            except Exception as e:
-                err = str(e)
-                if "503" in err or "UNAVAILABLE" in err:
-                    if attempt < max_retries:
-                        print(f"  Server busy, retrying in {wait_sec}s…")
-                        time.sleep(wait_sec)
+    try:
+        for model, max_retries, wait_sec in models_to_try:
+            for attempt in range(1, max_retries + 1):
+                try:
+                    print(f"Extracting features with {model} (attempt {attempt}/{max_retries})...")
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=[sample_file, prompt],
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=response_schema,
+                            temperature=0.1,
+                        ),
+                    )
+                    payload = json.loads(response.text)
+                    if not isinstance(payload, dict):
+                        raise RuntimeError("Unexpected Gemini response format.")
+                    return payload
+                except json.JSONDecodeError as e:
+                    raise RuntimeError("Gemini returned invalid JSON.") from e
+                except Exception as e:
+                    err = str(e)
+                    if "503" in err or "UNAVAILABLE" in err:
+                        if attempt < max_retries:
+                            print(f"  Server busy, retrying in {wait_sec}s…")
+                            time.sleep(wait_sec)
+                        else:
+                            print(f"  {model} still unavailable, trying next model…")
+                    elif "429" in err or "RESOURCE_EXHAUSTED" in err:
+                        print(f"  {model} quota exhausted, trying next model…")
+                        break
                     else:
-                        print(f"  {model} still unavailable, trying next model…")
-                elif "429" in err or "RESOURCE_EXHAUSTED" in err:
-                    print(f"  {model} quota exhausted, trying next model…")
-                    break
-                else:
-                    raise
+                        raise
 
-    raise RuntimeError("All Gemini models are currently unavailable. Please try again later.")
+        raise RuntimeError("All Gemini models are currently unavailable. Please try again later.")
+    finally:
+        client.files.delete(name=sample_file.name)
 
 
 if __name__ == "__main__":

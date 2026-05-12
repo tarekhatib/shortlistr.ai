@@ -13,7 +13,7 @@ from gemini_extractor import extract_features_from_cv
 from predict import (
     encode_candidate,
     generate_feedback,
-    load_or_train_models,
+    load_models,
     scale_candidate,
 )
 
@@ -21,8 +21,8 @@ models: dict = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Loading or training models on startup…")
-    rf, mlp, scaler, benchmarks = load_or_train_models()
+    print("Loading models…")
+    rf, mlp, scaler, benchmarks = load_models()
     models["rf"] = rf
     models["mlp"] = mlp
     models["scaler"] = scaler
@@ -61,16 +61,15 @@ async def analyze(cv: UploadFile = File(...), jd: str = Form(...)):
 
     try:
         gemini_result = extract_features_from_cv(pdf_path, jd_path)
-    except RuntimeError as e:
+    except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
     finally:
         os.unlink(pdf_path)
         os.unlink(jd_path)
 
     job_requirements = gemini_result.pop("job_requirements", {}) or {}
-    features_raw = gemini_result
 
-    features_enc = encode_candidate(features_raw)
+    features_enc = encode_candidate(gemini_result)
     row_scaled = scale_candidate(features_enc, models["scaler"])
 
     rf_pred = int(models["rf"].predict(row_scaled)[0])
@@ -85,7 +84,7 @@ async def analyze(cv: UploadFile = File(...), jd: str = Form(...)):
         rf_pred = 1
 
     return {
-        "features": features_raw,
+        "features": gemini_result,
         "predictions": {
             "random_forest": {"verdict": "shortlisted" if rf_pred == 1 else "not_shortlisted", "confidence": rf_prob},
             "neural_network": {"verdict": "shortlisted" if mlp_pred == 1 else "not_shortlisted", "confidence": mlp_prob},

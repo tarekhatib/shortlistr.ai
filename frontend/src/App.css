@@ -303,26 +303,6 @@
 .feat-val { font-size: 1.1rem; font-weight: 700; color: #111; }
 .feat-key { font-size: 0.72rem; color: #888; font-weight: 500; }
 
-/* ── No-improve note ─────────────────────────────────────────── */
-.no-improve-note {
-  background: #fffbeb;
-  border: 1.5px solid #fde68a;
-  border-radius: 10px;
-  padding: 16px 18px;
-  margin-bottom: 4px;
-}
-.no-improve-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #92400e;
-  margin-bottom: 6px;
-}
-.no-improve-body {
-  font-size: 0.8rem;
-  color: #78350f;
-  line-height: 1.6;
-}
-
 /* ── Improve section ─────────────────────────────────────────── */
 .improve-list {
   display: flex;
