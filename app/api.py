@@ -79,10 +79,16 @@ async def analyze(cv: UploadFile = File(...), jd: str = Form(...)):
     mlp_pred = 1 if mlp_prob_raw >= 0.5 else 0
     mlp_prob = round((mlp_prob_raw if mlp_pred == 1 else (1 - mlp_prob_raw)) * 100, 1)
 
-    feedback = generate_feedback(features_enc, models["rf"], models["benchmarks"], job_requirements) if rf_pred == 0 else []
+    if rf_pred == mlp_pred:
+        final_pred = rf_pred
+    else:
+        final_pred = rf_pred if rf_prob >= mlp_prob else mlp_pred
+
+    feedback = generate_feedback(features_enc, models["rf"], models["benchmarks"], job_requirements) if final_pred == 0 else []
 
     return {
         "features": gemini_result,
+        "verdict": "shortlisted" if final_pred == 1 else "not_shortlisted",
         "predictions": {
             "random_forest": {"verdict": "shortlisted" if rf_pred == 1 else "not_shortlisted", "confidence": rf_prob},
             "neural_network": {"verdict": "shortlisted" if mlp_pred == 1 else "not_shortlisted", "confidence": mlp_prob},

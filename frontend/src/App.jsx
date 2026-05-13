@@ -128,10 +128,12 @@ export default function App() {
 }
 
 function Results({ data }) {
-  const { features, predictions, feedback } = data
+  const { features, verdict, predictions, feedback } = data
   const rf  = predictions.random_forest
   const nn  = predictions.neural_network
-  const yes = rf.verdict === 'shortlisted'
+  const yes = verdict === 'shortlisted'
+  const agree = rf.verdict === nn.verdict
+  const verdictNote = agree ? 'Both models agree' : 'Decided by higher confidence'
 
   return (
     <div className="results">
@@ -140,7 +142,7 @@ function Results({ data }) {
         <div className="verdict-icon">{yes ? <CheckIcon /> : <XIcon />}</div>
         <div className="verdict-body">
           <p className="verdict-word">{yes ? 'Shortlisted' : 'Not Shortlisted'}</p>
-          <p className="verdict-note">Consensus from both models</p>
+          <p className="verdict-note">{verdictNote}</p>
         </div>
         <div className="model-row">
           <div className="model-stat">
