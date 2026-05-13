@@ -80,8 +80,6 @@ async def analyze(cv: UploadFile = File(...), jd: str = Form(...)):
     mlp_prob = round((mlp_prob_raw if mlp_pred == 1 else (1 - mlp_prob_raw)) * 100, 1)
 
     feedback = generate_feedback(features_enc, models["rf"], models["benchmarks"], job_requirements) if rf_pred == 0 else []
-    if rf_pred == 0 and len(feedback) == 0:
-        rf_pred = 1
 
     return {
         "features": gemini_result,
