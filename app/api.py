@@ -33,9 +33,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Resume Screener API", lifespan=lifespan)
 
+_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
+allowed_origins = [o.strip() for o in _origins.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=allowed_origins,
     allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
