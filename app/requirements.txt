@@ -1,7 +1,0 @@
-fastapi
-uvicorn[standard]
-python-multipart
-scikit-learn
-tensorflow-cpu
-google-genai
-python-dotenv

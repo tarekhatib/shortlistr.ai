@@ -35,7 +35,7 @@ export default function App() {
     form.append('cv', pdfFile)
     form.append('jd', jdText)
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL ?? ''}/analyze`, { method: 'POST', body: form })
+      const res  = await fetch('/analyze', { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'Analysis failed.')
       setResult(data)
